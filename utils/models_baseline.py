@@ -51,6 +51,7 @@ class ConvInputModel(nn.Module):
     def __init__(self):
         super().__init__()
         
+       
         self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1)
         self.batchNorm1 = nn.BatchNorm2d(24)
         self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
@@ -159,18 +160,16 @@ class QImodel(nn.Module):
         super().__init__()
 
         I_CNN = 2048
-        Box_GRU_out = 1024
         Q_GRU_out = 512
         Q_embedding = 300
-        att_out = 512
 
-        self.BoxRNN = nn.LSTM(att_out,Box_GRU_out,num_layers=1,bidirectional=False)
-        self.clshead = build_mlp( I_CNN + Q_GRU_out , [1024],1)      
+        self.clshead = nn.Linear( I_CNN + Q_GRU_out,Ncls)      
         self.QRNN = nn.LSTM(Q_embedding,Q_GRU_out,num_layers=1,bidirectional=False)
 
 
-    def forward(self,box_feats,q_feats,box_coords):
-                
+    def forward(self,**kwargs):
+        q_feats = kwargs['q_feats']    
+        box_feats = kwargs['box_feats']                 
         enc2,_ = self.QRNN(q_feats.permute(1,0,2))
         q_rnn = enc2[-1]
                 
@@ -186,10 +185,11 @@ class Qmodel(nn.Module):
         super().__init__()       
         Q_GRU_out = 512
         Q_embedding = 300        
-        self.clshead = build_mlp( Q_GRU_out,[1024] , 1)     
+        self.clshead = nn.Linear( Q_GRU_out, Ncls)     
         self.QRNN = nn.LSTM(Q_embedding,Q_GRU_out,num_layers=1,bidirectional=False)
 
-    def forward(self,box_feats,q_feats,box_coords):
+    def forward(self,**kwargs):
+        q_feats = kwargs['q_feats']
         enc2,_ = self.QRNN(q_feats.permute(1,0,2))
         q_rnn = enc2[-1]
         cls_scores = self.clshead(q_rnn)
@@ -199,10 +199,10 @@ class Imodel(nn.Module):
     def __init__(self,Ncls):
         super().__init__()
         I_CNN = 2048
-        self.clshead = build_mlp( I_CNN , [1024], 1)
+        self.clshead = nn.Linear( I_CNN , Ncls)
 
-    def forward(self,box_feats,q_feats,box_coords):
-      
+    def forward(self,**kwargs):
+        box_feats = kwargs['box_feats']  
         I = box_feats[:,0,:]
         cls_scores = self.clshead(I)
         return cls_scores

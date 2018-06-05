@@ -56,7 +56,10 @@ class RN(nn.Module):
    
     
     
-    def forward(self,box_feats,q_feats):
+    def forward(self,**kwargs):
+        
+        q_feats = kwargs['q_feats']    
+        box_feats = kwargs['box_feats']    
         
         enc2,_ = self.QRNN(q_feats.permute(1,0,2))
         q_rnn = enc2[-1]

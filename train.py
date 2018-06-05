@@ -70,28 +70,30 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
 
         img_indices,labels,ques = data
         
-        B = ques.size(0)       
-        boxtensors = []
-        for j in range(len(ques)):
-            path = IMG.format(split,split,img_indices[j])
-            img = Image.open(path).convert("RGB")
-            img = img.resize((224,224))
-            boxtensor = transform(img)
-            boxtensors.append(boxtensor.unsqueeze(0))
-        boxtensors = torch.cat(boxtensors,0)    
-        boxvar = Variable(boxtensors.type(dtype))
-        out = cnn(boxvar)    
-        out = out.squeeze(-1).squeeze(-1)     
+        wholefeat  = None
         
-        wholefeat = out
-        wholefeat = wholefeat.permute(0,2,3,1)
-        wholefeat = wholefeat.contiguous().view(B,196,-1)
+#        B = ques.size(0)       
+#        boxtensors = []
+#        for j in range(len(ques)):
+#            path = IMG.format(split,split,img_indices[j])
+#            img = Image.open(path).convert("RGB")
+#            img = img.resize((224,224))
+#            boxtensor = transform(img)
+#            boxtensors.append(boxtensor.unsqueeze(0))
+#        boxtensors = torch.cat(boxtensors,0)    
+#        boxvar = Variable(boxtensors.type(dtype))
+#        out = cnn(boxvar)    
+#        out = out.squeeze(-1).squeeze(-1)     
+#        
+#        wholefeat = out
+#        wholefeat = wholefeat.permute(0,2,3,1)
+#        wholefeat = wholefeat.contiguous().view(B,196,-1)
 
         true.extend(labels.long().numpy().tolist())
         cls_labels = Variable(labels.type(dtype))
         q_feats = Variable(ques.type(dtype))
         optimizer.zero_grad()
-        out = net(wholefeat,q_feats)
+        out = net(box_feats = wholefeat,q_feats = q_feats)
         #sometimes in a batch only 1 example at the end
         if out.dim() == 1: # add one more dimension
             out = out.unsqueeze(0)
@@ -136,7 +138,8 @@ if __name__ == '__main__':
     parser.add_argument('--savefreq', help='save model frequency',type=int,default=1)
 
     args = parser.parse_args()
-    args =  argparse.Namespace(Nepochs=50, model='RN', save='',lr=7e-4 ,savefreq=1)
+    #args =  argparse.Namespace(Nepochs=50, model='RN', save='',lr=2.5e-4 ,savefreq=1)
+    args =  argparse.Namespace(Nepochs=50, model='Q', save='',lr=2.5e-4 ,savefreq=1)
     print (args)
     
     Ncls = ds['Ncls']
@@ -152,12 +155,12 @@ if __name__ == '__main__':
 
 
 
-    trainset = CLEVR(file = ds['train'],train=True)
-    testset = CLEVR(file = ds['val'],train=True)
+    trainset = CLEVR(file = ds['train'],istrain=True)
+    testset = CLEVR(file = ds['val'],istrain=True)
     
-    testloader = DataLoader(testset, batch_size=32,
+    testloader = DataLoader(testset, batch_size=64,
                              shuffle=False, num_workers=4)
-    trainloader = DataLoader(trainset, batch_size=32,
+    trainloader = DataLoader(trainset, batch_size=64,
                          shuffle=True, num_workers=4)
 
     use_gpu = torch.cuda.is_available()
@@ -215,7 +218,7 @@ if __name__ == '__main__':
         logger.warning('Train epoch:{} Loss: {:.3f} Acc {:.2f}'.format(epoch,train['loss'],acc))
 
         acc = getaccuracy(test['true'],test['pred'])
-        print('Test Loss: {:.4f}'.format(test['loss'],acc))
+        print('Train Loss: {:.4f} Acc: {:.2f} '.format(test['loss'],acc))
         logger.warning('Test epoch:{} Loss: {:.3f} Acc {:.2f}'.format(epoch,test['loss'],acc))
 
 
@@ -226,8 +229,7 @@ if __name__ == '__main__':
                 'epoch': epoch,
                 'state_dict': model.state_dict(),
                 'true':test['true'],
-                'pred_reg':test['pred_reg'],
-                'pred_cls':test['pred_cls'],
+                'pred':test['pred'],
                 'optimizer' : optimizer.state_dict(),
             }
 
