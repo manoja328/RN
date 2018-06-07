@@ -59,16 +59,18 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
     elif split == 'val':
         train = False
 
-    if train: net.train()
-    else: net.eval()
+    if train:
+        net.train()
+    else:
+        net.eval()
 
 
     clslossfn = nn.CrossEntropyLoss()
 
     for i, data in enumerate(loader):
 
-
-        img_indices,labels,ques = data
+        #idx,img_index,np.float32(ans),qfeat,qlen
+        qidxes,img_indices,labels,ques,qlen = data
         
         wholefeat  = None
         
@@ -91,9 +93,10 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
 
         true.extend(labels.long().numpy().tolist())
         cls_labels = Variable(labels.type(dtype))
-        q_feats = Variable(ques.type(dtype))
+        q_feats = Variable(ques.type(dtype).long())
+        q_lens  = Variable(qlen.type(dtype).long())
         optimizer.zero_grad()
-        out = net(box_feats = wholefeat,q_feats = q_feats)
+        out = net(box_feats = wholefeat,q_feats = q_feats,q_lens = q_lens)
         #sometimes in a batch only 1 example at the end
         if out.dim() == 1: # add one more dimension
             out = out.unsqueeze(0)
@@ -153,16 +156,24 @@ if __name__ == '__main__':
 
     #resultfile = open(os.path.join(savefolder,savefolder+".txt"),"a")
 
+    import torch.utils.data as data
+
+    def collate_fn(batch):
+        # put question lengths in descending order so that we can use packed sequences later
+        batch.sort(key=lambda x: x[-1], reverse=True)
+        return data.dataloader.default_collate(batch)
+
 
 
     trainset = CLEVR(file = ds['train'],istrain=True)
     testset = CLEVR(file = ds['val'],istrain=True)
     
-    testloader = DataLoader(testset, batch_size=64,
-                             shuffle=False, num_workers=4)
-    trainloader = DataLoader(trainset, batch_size=64,
-                         shuffle=True, num_workers=4)
 
+    trainloader = DataLoader(trainset, batch_size=64,
+                         shuffle=True, num_workers=4,collate_fn=collate_fn)
+    testloader = DataLoader(testset, batch_size=64,
+                             shuffle=False, num_workers=4,collate_fn=collate_fn)
+    
     use_gpu = torch.cuda.is_available()
     dtype = torch.FloatTensor
     if use_gpu == True:
@@ -215,11 +226,11 @@ if __name__ == '__main__':
 
         acc = getaccuracy(train['true'],train['pred'])
         print('Train Loss: {:.4f} Acc: {:.2f} '.format(train['loss'],acc))        
-        logger.warning('Train epoch:{} Loss: {:.3f} Acc {:.2f}'.format(epoch,train['loss'],acc))
+        logger.warning('Train epoch:{} Loss: {:.3f} Acc: {:.2f}'.format(epoch,train['loss'],acc))
 
         acc = getaccuracy(test['true'],test['pred'])
-        print('Train Loss: {:.4f} Acc: {:.2f} '.format(test['loss'],acc))
-        logger.warning('Test epoch:{} Loss: {:.3f} Acc {:.2f}'.format(epoch,test['loss'],acc))
+        print('Test Loss: {:.4f} Acc: {:.2f} '.format(test['loss'],acc))
+        logger.warning('Test epoch:{} Loss: {:.3f} Acc: {:.2f}'.format(epoch,test['loss'],acc))
 
 
         is_best = False
@@ -241,8 +252,8 @@ if __name__ == '__main__':
             optimizer.param_groups[0]['lr'] *= 0.1
             lr =  optimizer.param_groups[0]['lr']
             print ("New Learning rate: ",lr)
-            early_stop.reset()
-            #break
+            #early_stop.reset()
+            break
     print('Finished Training')
     
     
@@ -254,7 +265,7 @@ def testd():
     fiter = iter(trainloader)    
     
     data = next(fiter)
-    img_indices,labels,ques = data
+    qidxes,img_indices,labels,ques,qlen = data
     split = 'train'
     
     B = ques.size(0)       

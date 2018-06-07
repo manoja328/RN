@@ -4,6 +4,10 @@ import torch.nn.functional as F
 from torchvision import models
 import shutil
 import os
+
+import torch.nn.init as init
+from torch.nn.utils.rnn import pack_padded_sequence
+
 def save_checkpoint(savefolder,tbs, is_best=False):
     epoch = tbs['epoch']
     
@@ -180,20 +184,77 @@ class QImodel(nn.Module):
         return cls_scores
 
 
+
+
+class TextProcessor(nn.Module):
+    def __init__(self, embedding_tokens, embedding_features, lstm_features, drop=0.0):
+        super().__init__()
+        self.embedding = nn.Embedding(embedding_tokens, embedding_features, padding_idx=0)
+        self.drop = nn.Dropout(drop)
+        self.tanh = nn.Tanh()
+        self.lstm = nn.LSTM(input_size=embedding_features,
+                            hidden_size=lstm_features,
+                            num_layers=1)
+        self.features = lstm_features
+
+        self._init_lstm(self.lstm.weight_ih_l0)
+        self._init_lstm(self.lstm.weight_hh_l0)
+        self.lstm.bias_ih_l0.data.zero_()
+        self.lstm.bias_hh_l0.data.zero_()
+
+        init.xavier_uniform(self.embedding.weight)
+
+    def _init_lstm(self, weight):
+        for w in weight.chunk(4, 0):
+            init.xavier_uniform(w)
+
+    def forward(self, q, q_len):
+        embedded = self.embedding(q)
+        tanhed = self.tanh(self.drop(embedded))
+        packed = pack_padded_sequence(tanhed, q_len, batch_first=True)
+        _, (_, c) = self.lstm(packed)
+        return c.squeeze(0)
+
+
 class Qmodel(nn.Module):
     def __init__(self,Ncls):
         super().__init__()       
-        Q_GRU_out = 512
+        Q_GRU_out = 128
         Q_embedding = 300        
         self.clshead = nn.Linear( Q_GRU_out, Ncls)     
-        self.QRNN = nn.LSTM(Q_embedding,Q_GRU_out,num_layers=1,bidirectional=False)
+        
+        
+        self.text = TextProcessor(
+            embedding_tokens= 96,
+            embedding_features=Q_embedding,
+            lstm_features=Q_GRU_out,
+            drop=0.5,
+        )
+        
+        #self.QRNN = nn.LSTM(Q_embedding,Q_GRU_out,num_layers=1,bidirectional=False)
 
     def forward(self,**kwargs):
         q_feats = kwargs['q_feats']
-        enc2,_ = self.QRNN(q_feats.permute(1,0,2))
-        q_rnn = enc2[-1]
+        q_lens = kwargs['q_lens']
+        q_rnn = self.text(q_feats,list(q_lens.data))
         cls_scores = self.clshead(q_rnn)
         return cls_scores
+
+
+#class Qmodel(nn.Module):
+#    def __init__(self,Ncls):
+#        super().__init__()       
+#        Q_GRU_out = 512
+#        Q_embedding = 300        
+#        self.clshead = nn.Linear( Q_GRU_out, Ncls)     
+#        self.QRNN = nn.LSTM(Q_embedding,Q_GRU_out,num_layers=1,bidirectional=False)
+#
+#    def forward(self,**kwargs):
+#        q_feats = kwargs['q_feats']
+#        enc2,_ = self.QRNN(q_feats.permute(1,0,2))
+#        q_rnn = enc2[-1]
+#        cls_scores = self.clshead(q_rnn)
+#        return cls_scores
 
 class Imodel(nn.Module):
     def __init__(self,Ncls):

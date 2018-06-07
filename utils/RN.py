@@ -23,6 +23,8 @@ class RN(nn.Module):
                nn.Linear( LINsize, LINsize),
                nn.ReLU(inplace=True),
                nn.Linear(LINsize,LINsize),
+               nn.ReLU(inplace=True)
+               nn.Linear(LINsize,LINsize),
                nn.ReLU(inplace=True)]
 
         self.g = nn.Sequential(*layers_g)
@@ -30,6 +32,8 @@ class RN(nn.Module):
 
 
         layers_f = [ nn.Linear(LINsize ,LINsize),
+                      nn.ReLU(inplace=True),
+                      nn.Linear(LINsize ,LINsize),
                       nn.ReLU(inplace=True),
                       nn.Dropout(0.5),
                       nn.Linear(LINsize,self.Ncls) ]
