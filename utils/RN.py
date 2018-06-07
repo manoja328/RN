@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from .models_baseline import TextProcessor
 
 class RN(nn.Module):
     def __init__(self,Ncls):
@@ -15,7 +16,13 @@ class RN(nn.Module):
         
         self.Ncls = Ncls
 
-        self.QRNN = nn.LSTM(Q_embedding,Q_GRU_out,num_layers=1,bidirectional=False)
+        self.text = TextProcessor(
+            embedding_tokens= 96,
+            embedding_features=Q_embedding,
+            lstm_features=Q_GRU_out,
+            drop=0.5,
+        )
+        
 
 
         layers_g = [ nn.Linear( 2*I_CNN + Q_GRU_out, LINsize),
@@ -23,7 +30,7 @@ class RN(nn.Module):
                nn.Linear( LINsize, LINsize),
                nn.ReLU(inplace=True),
                nn.Linear(LINsize,LINsize),
-               nn.ReLU(inplace=True)
+               nn.ReLU(inplace=True),
                nn.Linear(LINsize,LINsize),
                nn.ReLU(inplace=True)]
 
@@ -64,9 +71,9 @@ class RN(nn.Module):
         
         q_feats = kwargs['q_feats']    
         box_feats = kwargs['box_feats']    
+        q_lens = kwargs['q_lens']
         
-        enc2,_ = self.QRNN(q_feats.permute(1,0,2))
-        q_rnn = enc2[-1]
+        q_rnn = self.text(q_feats,list(q_lens.data))
         
         N = box_feats.size(1)
         B = q_feats.size(0)

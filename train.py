@@ -74,22 +74,22 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
         
         wholefeat  = None
         
-#        B = ques.size(0)       
-#        boxtensors = []
-#        for j in range(len(ques)):
-#            path = IMG.format(split,split,img_indices[j])
-#            img = Image.open(path).convert("RGB")
-#            img = img.resize((224,224))
-#            boxtensor = transform(img)
-#            boxtensors.append(boxtensor.unsqueeze(0))
-#        boxtensors = torch.cat(boxtensors,0)    
-#        boxvar = Variable(boxtensors.type(dtype))
-#        out = cnn(boxvar)    
-#        out = out.squeeze(-1).squeeze(-1)     
-#        
-#        wholefeat = out
-#        wholefeat = wholefeat.permute(0,2,3,1)
-#        wholefeat = wholefeat.contiguous().view(B,196,-1)
+        B = ques.size(0)       
+        boxtensors = []
+        for j in range(len(ques)):
+            path = IMG.format(split,split,img_indices[j])
+            img = Image.open(path).convert("RGB")
+            img = img.resize((128,128))
+            boxtensor = transform(img)
+            boxtensors.append(boxtensor.unsqueeze(0))
+        boxtensors = torch.cat(boxtensors,0)    
+        boxvar = Variable(boxtensors.type(dtype))
+        out = cnn(boxvar)    
+        out = out.squeeze(-1).squeeze(-1)     
+        Featsize = out.size(1)
+        wholefeat = out
+        wholefeat = wholefeat.permute(0,2,3,1)
+        wholefeat = wholefeat.contiguous().view(B,-1,Featsize)
 
         true.extend(labels.long().numpy().tolist())
         cls_labels = Variable(labels.type(dtype))
@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     #args =  argparse.Namespace(Nepochs=50, model='RN', save='',lr=2.5e-4 ,savefreq=1)
-    args =  argparse.Namespace(Nepochs=50, model='Q', save='',lr=2.5e-4 ,savefreq=1)
+    args =  argparse.Namespace(Nepochs=50, model='RN', save='',lr=2.5e-4 ,savefreq=1)
     print (args)
     
     Ncls = ds['Ncls']
@@ -156,12 +156,12 @@ if __name__ == '__main__':
 
     #resultfile = open(os.path.join(savefolder,savefolder+".txt"),"a")
 
-    import torch.utils.data as data
+    import torch.utils.data
 
     def collate_fn(batch):
         # put question lengths in descending order so that we can use packed sequences later
         batch.sort(key=lambda x: x[-1], reverse=True)
-        return data.dataloader.default_collate(batch)
+        return torch.utils.data.dataloader.default_collate(batch)
 
 
 
@@ -268,20 +268,23 @@ def testd():
     qidxes,img_indices,labels,ques,qlen = data
     split = 'train'
     
+    wholefeat  = None
+    
     B = ques.size(0)       
     boxtensors = []
     for j in range(len(ques)):
         path = IMG.format(split,split,img_indices[j])
         img = Image.open(path).convert("RGB")
-        img = img.resize((224,224))
+        img = img.resize((128,128))
         boxtensor = transform(img)
         boxtensors.append(boxtensor.unsqueeze(0))
     boxtensors = torch.cat(boxtensors,0)    
     boxvar = Variable(boxtensors.type(dtype))
     out = cnn(boxvar)    
     out = out.squeeze(-1).squeeze(-1)     
-    
+    Featsize = out.size(1)
     wholefeat = out
     wholefeat = wholefeat.permute(0,2,3,1)
-    wholefeat = wholefeat.contiguous().view(B,196,-1)
-        
+    wholefeat.contiguous().view(B,-1,Featsize)
+
+    
