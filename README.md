@@ -5,4 +5,4 @@ Actual results on CLEVR dataset using [RN](https://arxiv.org/abs/1706.01427):
 Since, the test set is not publicly available. I have uploaded my results for the validation set. 
 
 ##### LSTM model
-Overall acc: 47.46
+Overall acc: *47.46*
