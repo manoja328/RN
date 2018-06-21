@@ -33,19 +33,19 @@ transform = transforms.Compose(
      normalize])
 
 use_gpu = torch.cuda.is_available()
-dtype2 = torch.FloatTensor
+dtype = torch.FloatTensor
 if use_gpu == True:
-    dtype2 = torch.cuda.FloatTensor
+    dtype = torch.cuda.FloatTensor
 
 cnn = ConvInputModel()
-cnn.type(dtype2)
+cnn.type(dtype)
 print (cnn)
 
 
 #%%
 
 def run(net, split,loader, optimizer,tracker, epoch=0):
-    global logger, dtype
+    global logger
 
     start_time = time.time()
     true = []
@@ -56,14 +56,15 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
     
     if split == 'train':
         train= True
-    elif split == 'val':
+    elif split == 'val' or split =='test':
         train = False
 
     if train:
         net.train()
+        cnn.train()
     else:
         net.eval()
-
+        cnn.eval()
 
     clslossfn = nn.CrossEntropyLoss()
 
@@ -105,14 +106,14 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
         _,clspred = torch.max(out,-1)
         pred.extend(clspred.data.cpu().numpy().ravel())
 
-        loss_meter.update(loss.data[0])
+        loss_meter.update(float(loss.data))
 
         if train:
             loss.backward()
             optimizer.step()
 
         if i == 0 and epoch == 0 and train:
-            print ("Starting loss: {:.4f}".format(loss.data[0]))
+            print ("Starting loss: {:.4f}".format(float(loss.data)))
 
 
         if i % Nprint == Nprint-1:
@@ -132,7 +133,7 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
 
 #%%
 if __name__ == '__main__':
-    global logger,dtype
+    global logger
     parser = argparse.ArgumentParser()
     parser.add_argument('--Nepochs', type=int,help='Number of epochs',default=200)
     parser.add_argument('--model', help='Model Q | I| QI | Main | RN')
@@ -169,15 +170,15 @@ if __name__ == '__main__':
     testset = CLEVR(file = ds['val'],istrain=True)
     
 
-    trainloader = DataLoader(trainset, batch_size=64,
+    trainloader = DataLoader(trainset, batch_size=32,
                          shuffle=True, num_workers=4,collate_fn=collate_fn)
-    testloader = DataLoader(testset, batch_size=64,
+    testloader = DataLoader(testset, batch_size=32,
                              shuffle=False, num_workers=4,collate_fn=collate_fn)
     
-    use_gpu = torch.cuda.is_available()
-    dtype = torch.FloatTensor
-    if use_gpu == True:
-        dtype = torch.cuda.FloatTensor
+#    use_gpu = torch.cuda.is_available()
+#    dtype = torch.FloatTensor
+#    if use_gpu == True:
+#        dtype = torch.cuda.FloatTensor
     if args.model =='Q':
         model = Qmodel(Ncls)
     elif args.model =='I':

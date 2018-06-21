@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from .models_baseline import TextProcessor
+import torch.nn.init as init
 
 class RN(nn.Module):
     def __init__(self,Ncls):
@@ -23,8 +24,6 @@ class RN(nn.Module):
             drop=0.5,
         )
         
-
-
         layers_g = [ nn.Linear( 2*I_CNN + Q_GRU_out, LINsize),
                nn.ReLU(inplace=True),
                nn.Linear( LINsize, LINsize),
@@ -35,8 +34,6 @@ class RN(nn.Module):
                nn.ReLU(inplace=True)]
 
         self.g = nn.Sequential(*layers_g)
-
-
 
         layers_f = [ nn.Linear(LINsize ,LINsize),
                       nn.ReLU(inplace=True),
@@ -64,8 +61,19 @@ class RN(nn.Module):
         coords = make_coords(4)
 
         self.pool_coords = torch.autograd.Variable(coords.type(torch.cuda.FloatTensor))
-   
-    
+        
+        
+#        for m in self.g.modules():
+#            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+#                init.xavier_uniform(m.weight)
+#                if m.bias is not None:
+#                    m.bias.data.zero_()
+#           
+#        for m in self.f.modules():
+#            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+#                init.xavier_uniform(m.weight)
+#                if m.bias is not None:
+#                    m.bias.data.zero_()
     
     def forward(self,**kwargs):
         
