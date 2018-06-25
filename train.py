@@ -91,6 +91,8 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
         wholefeat = out
         wholefeat = wholefeat.permute(0,2,3,1)
         wholefeat = wholefeat.contiguous().view(B,-1,Featsize)
+        
+
 
         true.extend(labels.long().numpy().tolist())
         cls_labels = Variable(labels.type(dtype))

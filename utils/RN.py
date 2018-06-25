@@ -13,7 +13,7 @@ class RN(nn.Module):
         Q_GRU_out = 128
         Q_embedding = 300
         LINsize = 256
-        Boxcoords = 4
+        Boxcoords = 2
         
         self.Ncls = Ncls
 
@@ -24,7 +24,7 @@ class RN(nn.Module):
             drop=0.5,
         )
         
-        layers_g = [ nn.Linear( 2*I_CNN + Q_GRU_out, LINsize),
+        layers_g = [ nn.Linear( 2*I_CNN + Q_GRU_out + 2*Boxcoords, LINsize),
                nn.ReLU(inplace=True),
                nn.Linear( LINsize, LINsize),
                nn.ReLU(inplace=True),
@@ -46,19 +46,31 @@ class RN(nn.Module):
         self.f = nn.Sequential(*layers_f)
         
         
-        def make_coords(N):           
+#        def make_coords(N):           
+#            c = []
+#            W = 448
+#            box = W/N
+#            rangex = 4
+#            for y in range(rangex):
+#                for x in range(rangex):
+#                    grid=[x*box, y*box, (x+1)*box, (y+1)*box]
+#                    c.append(grid)                                
+#            arr = np.array(c)/448
+#            return torch.from_numpy(arr).float()
+ 
+    
+
+        def make_coords(total):           
             c = []
-            W = 448
-            box = W/N
-            rangex = 4
-            for y in range(rangex):
-                for x in range(rangex):
-                    grid=[x*box, y*box, (x+1)*box, (y+1)*box]
+            W = int(total**0.5)
+            for i in range(W):
+                for j in range(W):
+                    grid= [ (i - W//2)/W, (j - W//2)/W]
                     c.append(grid)                                
-            arr = np.array(c)/448
+            arr = np.array(c)
             return torch.from_numpy(arr).float()
-        
-        coords = make_coords(4)
+       
+        coords = make_coords(64)
 
         self.pool_coords = torch.autograd.Variable(coords.type(torch.cuda.FloatTensor))
         
@@ -87,7 +99,11 @@ class RN(nn.Module):
         B = q_feats.size(0)
         
         qst = q_rnn.unsqueeze(1).unsqueeze(2).expand(-1,N,N,-1)
+        
 
+        pool_coords = self.pool_coords.unsqueeze(0).expand(B,-1,-1)
+        box_feats = torch.cat([box_feats,pool_coords],-1)
+        #print (N,B,box_feats.size(),pool_coords.size())
         
         #TODO: add coordinates + relative box features like size etc.
         #x_flat = torch.cat([x_flat, self.coord_tensor],2)
