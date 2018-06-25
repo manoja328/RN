@@ -21,7 +21,7 @@ from torchvision import transforms
 from PIL import Image
 #%%
 
-IMG = '/home/manoj/CLEVR_v1.0/images/{}/CLEVR_{}_{:06d}.png'
+
 
 normalize = transforms.Normalize(
                     mean=[0.485, 0.456, 0.406],
@@ -78,6 +78,7 @@ def run(net, split,loader, optimizer,tracker, epoch=0):
         B = ques.size(0)       
         boxtensors = []
         for j in range(len(ques)):
+            IMG = os.path.join(ds['CLEVR'],'images/{}/CLEVR_{}_{:06d}.png')
             path = IMG.format(split,split,img_indices[j])
             img = Image.open(path).convert("RGB")
             img = img.resize((128,128))
