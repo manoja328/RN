@@ -56,13 +56,13 @@ class ConvInputModel(nn.Module):
         super().__init__()
         
        
-        self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1)
+        self.conv1 = nn.Conv2d(3, 24, 3, stride=2, padding=1,bias=False)
         self.batchNorm1 = nn.BatchNorm2d(24)
-        self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.conv2 = nn.Conv2d(24, 24, 3, stride=2, padding=1,bias=False)
         self.batchNorm2 = nn.BatchNorm2d(24)
-        self.conv3 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.conv3 = nn.Conv2d(24, 24, 3, stride=2, padding=1,bias=False)
         self.batchNorm3 = nn.BatchNorm2d(24)
-        self.conv4 = nn.Conv2d(24, 24, 3, stride=2, padding=1)
+        self.conv4 = nn.Conv2d(24, 24, 3, stride=2, padding=1,bias=False)
         self.batchNorm4 = nn.BatchNorm2d(24)
 
         
